@@ -1,0 +1,138 @@
+{
+    "settings": {
+        "start_state": "root"
+    },
+    "states": {
+        "root": {
+            "description": "The main menu. The user can ask for banking services.",
+            "response_template": "Welcome! How can I help you today?",
+            "fallback_behavior": "auto_reclassify",
+            "transitions": [
+                {
+                    "intent": "check_balance",
+                    "target": "view_balance"
+                },
+                {
+                    "intent": "transfer_money",
+                    "target": "transfer_flow_start"
+                }
+            ]
+        },
+        "view_balance": {
+            "description": "Displaying the user's account balance.",
+            "type": "action",
+            "action_name": "get_balance",
+            "on_success": "root",
+            "on_error": "system_error"
+        },
+        "transfer_flow_start": {
+            "description": "Initiating a money transfer. We need to know who to send it to and how much.",
+            "slots_required": [
+                "amount",
+                "recipient"
+            ],
+            "slots_optional": [
+                "memo"
+            ],
+            "slot_config": {},
+            "response_prompt": "Ask the user for the amount and recipient. If provided, also capture the memo.",
+            "fallback_behavior": "ask_reclassify",
+            "transitions": [
+                {
+                    "intent": "transfer_information",
+                    "target": "transfer_confirm",
+                    "condition": "all_slots_filled"
+                },
+                {
+                    "intent": "cancel",
+                    "target": "root",
+                    "context_updates": {
+                        "clear_slots": [
+                            "amount",
+                            "recipient",
+                            "memo"
+                        ]
+                    }
+                }
+            ]
+        },
+        "transfer_confirm": {
+            "description": "Waiting for user confirmation to execute transfer.",
+            "response_prompt": "Ask the user to confirm the transfer of {amount} to {recipient}.",
+            "fallback_behavior": "ask_reclassify",
+            "transitions": [
+                {
+                    "intent": "yes",
+                    "target": "transfer_execute"
+                },
+                {
+                    "intent": "confirm",
+                    "target": "transfer_execute"
+                },
+                {
+                    "intent": "no",
+                    "target": "transfer_flow_start"
+                },
+                {
+                    "intent": "cancel",
+                    "target": "root"
+                }
+            ]
+        },
+        "transfer_execute": {
+            "type": "action",
+            "action_name": "execute_transfer_func",
+            "transitions": {
+                "success": "transfer_success",
+                "insufficient_funds": "transfer_error_insufficient_funds",
+                "error": "transfer_error_state"
+            }
+        },
+        "transfer_error_insufficient_funds": {
+            "response_template": "I'm sorry, you don't have enough funds for this transfer.",
+            "transitions": [
+                {
+                    "intent": "ok",
+                    "target": "root"
+                }
+            ]
+        },
+        "transfer_success": {
+            "description": "Transfer completed successfully.",
+            "response_template": "Success! The money has been sent.",
+            "transitions": [
+                {
+                    "intent": "ok",
+                    "target": "root"
+                }
+            ]
+        },
+        "transfer_error_state": {
+            "response_template": "I'm sorry, something went wrong with the transfer. Please try again later.",
+            "transitions": [
+                {
+                    "intent": "ok",
+                    "target": "root"
+                }
+            ]
+        },
+        "system_error": {
+            "response_template": "I encountered a system error. Returning to the main menu.",
+            "transitions": [
+                {
+                    "intent": "ok",
+                    "target": "root"
+                }
+            ]
+        },
+        "out_of_scope": {
+            "response_template": "I'm sorry, I didn't understand that. Could you please rephrase?",
+            "transitions": [
+                {
+                    "intent": "ok",
+                    "target": "root"
+                }
+            ]
+        }
+    }
+}

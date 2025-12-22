@@ -1,0 +1,100 @@
+{
+    "settings": {
+        "start_state": "root"
+    },
+    "states": {
+        "root": {
+            "description": "Main Banking Menu",
+            "response_template": "Welcome to BankAI. You can check balance or transfer money.",
+            "transitions": [
+                {
+                    "intent": "check_balance",
+                    "target": "view_balance"
+                },
+                {
+                    "intent": "transfer_money",
+                    "target": "transfer_start"
+                }
+            ]
+        },
+        "view_balance": {
+            "description": "Check balance for account.",
+            "slots_required": [
+                "account_type"
+            ],
+            "transitions": [
+                {
+                    "intent": "provide_account",
+                    "target": "get_balance_action",
+                    "condition": "all_slots_filled"
+                }
+            ],
+            "response_prompt": "Ask for account type (checking/savings)."
+        },
+        "get_balance_action": {
+            "type": "action",
+            "action_name": "get_balance",
+            "transitions": {
+                "success": "balance_shown"
+            }
+        },
+        "balance_shown": {
+            "response_template": "Your {account_type} balance is $5,000.",
+            "transitions": [
+                {
+                    "intent": "transfer_money",
+                    "target": "transfer_start"
+                },
+                {
+                    "intent": "thanks",
+                    "target": "root",
+                    "context_updates": {
+                        "clear_slots": [
+                            "account_type"
+                        ]
+                    }
+                }
+            ]
+        },
+        "transfer_start": {
+            "description": "Transfer start. Note: account_type might be shared from balance flow.",
+            "slots_required": [
+                "account_type",
+                "amount",
+                "recipient"
+            ],
+            "transitions": [
+                {
+                    "intent": "provide_info",
+                    "target": "transfer_exec",
+                    "condition": "all_slots_filled"
+                }
+            ],
+            "response_prompt": "I need account type, amount and recipient."
+        },
+        "transfer_exec": {
+            "type": "action",
+            "action_name": "transfer_func",
+            "transitions": {
+                "success": "transfer_success",
+                "error": "root"
+            }
+        },
+        "transfer_success": {
+            "response_template": "Transferred {amount} to {recipient} from {account_type}.",
+            "transitions": [
+                {
+                    "intent": "ok",
+                    "target": "root",
+                    "context_updates": {
+                        "clear_slots": [
+                            "account_type",
+                            "amount",
+                            "recipient"
+                        ]
+                    }
+                }
+            ]
+        }
+    }
+}

@@ -1,0 +1,49 @@
+{
+    "settings": {
+        "start_state": "root"
+    },
+    "states": {
+        "root": {
+            "description": "Welcome to the Store FAQ bot. Helps with hours and locations.",
+            "response_template": "Hi! I can help you with store hours and locations.",
+            "transitions": [
+                {
+                    "intent": "ask_hours",
+                    "target": "hours_info"
+                },
+                {
+                    "intent": "ask_location",
+                    "target": "location_info"
+                }
+            ]
+        },
+        "hours_info": {
+            "description": "Providing store hours.",
+            "response_template": "We are open Monday-Friday, 9am to 9pm.",
+            "transitions": [
+                {
+                    "intent": "thanks",
+                    "target": "root"
+                },
+                {
+                    "intent": "ask_location",
+                    "target": "location_info"
+                }
+            ]
+        },
+        "location_info": {
+            "description": "Providing store locations.",
+            "response_template": "We are located at 123 Main St, Springfield.",
+            "transitions": [
+                {
+                    "intent": "thanks",
+                    "target": "root"
+                },
+                {
+                    "intent": "ask_hours",
+                    "target": "hours_info"
+                }
+            ]
+        }
+    }
+}

@@ -1,0 +1,44 @@
+{
+    "settings": {
+        "start_state": "baggage_menu"
+    },
+    "states": {
+        "baggage_menu": {
+            "description": "Airline Baggage Helper. Menu.",
+            "response_template": "What kind of baggage do you have a question about? (Carry-on or Checked)",
+            "transitions": [
+                {
+                    "intent": "select_bag_type",
+                    "target": "baggage_policy",
+                    "condition": "all_slots_filled"
+                }
+            ],
+            "slots_required": [
+                "bag_type"
+            ]
+        },
+        "baggage_policy": {
+            "description": "Showing policy based on bag type.",
+            "response_prompt": "If {bag_type} is 'carry-on', say: 'Carry-on must fit under the seat.' If 'checked', say: 'Checked bags cost $30.'",
+            "transitions": [
+                {
+                    "intent": "another_question",
+                    "target": "baggage_menu",
+                    "context_updates": {
+                        "clear_slots": [
+                            "bag_type"
+                        ]
+                    }
+                },
+                {
+                    "intent": "thanks",
+                    "target": "baggage_menu"
+                }
+            ]
+        },
+        "root": {
+            "description": "Unused root fallback",
+            "transitions": []
+        }
+    }
+}
