@@ -4,15 +4,13 @@ import os
 # Add current directory to path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from core.llm_client import LLMClient
-
-import json
+from core.gliner_client import GlinerClient
 from core.prompt_builder import PromptBuilder
 
 def test_llm_client():
     print("Initializing LLMClient...")
     try:
-        client = LLMClient()
+        client = GlinerClient()
     except Exception as e:
         print(f"Failed to initialize LLMClient: {e}")
         return

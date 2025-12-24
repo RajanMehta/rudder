@@ -4,7 +4,7 @@ from typing import Dict, Any, Optional
 
 from .context import DialogContext
 from .llm_client import LLMClient
-from .prompt_builder import PromptBuilder
+from .prompt_builder import GlinerPromptBuilder
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -48,7 +48,7 @@ class DialogEngine:
             self.config = json.load(f)
         
         self.llm_client = llm_client
-        self.prompt_builder = PromptBuilder()
+        self.prompt_builder = GlinerPromptBuilder()
         self.actions = ActionRegistry()
         self.validators = ValidatorRegistry()
         self.states = self.config["states"]
@@ -65,8 +65,12 @@ class DialogEngine:
 
         # 1. Check if current state has an Action (Immediate Execution)
         # This usually happens if we transitioned to an action state in the previous turn
+        # If current state is Terminal, go back to start state
         if current_state_config.get("type") == "action":
             return self._handle_action_state(context, current_state_config)
+        elif current_state_config.get("type") == "terminal":
+            context.current_state = self.config["settings"]["start_state"]
+            current_state_config = self.states[context.current_state]
 
         # 2. NLU Step: Determine Intent
         nlu_result = self._run_nlu(user_input, current_state_config, context)
@@ -109,8 +113,11 @@ class DialogEngine:
              return self._handle_fallback(context, current_state_config)
 
     def _run_nlu(self, user_input: str, state_config: Dict, context: DialogContext) -> Dict:
-        system_prompt = self.prompt_builder.build_constraint_prompt(state_config, context.get_snapshot())
-        return self.llm_client.predict(user_input, system_prompt=system_prompt)
+        schema_config = self.prompt_builder.build_schema(state_config)
+        return self.llm_client.predict(user_input, schema_config=schema_config)
+        # For now, I'm not using generative models for NLU as I couldn't find a good open source option.
+        # system_prompt = self.prompt_builder.build_constraint_prompt(state_config, context.get_snapshot())
+        # return self.llm_client.predict(user_input, system_prompt=system_prompt)
 
     def _resolve_transition(self, state_config: Dict, intent: str, context: DialogContext) -> Optional[str]:
         transitions = state_config.get("transitions", [])

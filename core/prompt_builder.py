@@ -49,3 +49,29 @@ output strict JSON:
 }}
 """
         return system_prompt
+
+
+class GlinerPromptBuilder:
+    def __init__(self):
+        pass
+
+    def build_schema(self, state_config: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Constructs the schema for Gliner extraction.
+        """
+        transitions = state_config.get("transitions", [])
+        intent_labels = [t["intent"] for t in transitions]
+        
+        required_slots = state_config.get("slots_required", [])
+        optional_slots = state_config.get("slots_optional", [])
+        
+        entities = {}
+        for slot in required_slots + optional_slots:
+            # In a real scenario, we might want to map slot names to descriptions
+            # For now, we use the slot name as the description
+            entities[slot] = f"Extract the {slot} from the text"
+
+        return {
+            "entities": entities,
+            "classification": ("intent", intent_labels)
+        }

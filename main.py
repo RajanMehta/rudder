@@ -5,7 +5,7 @@ import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from core.engine import DialogEngine
-from core.llm_client import LLMClient
+from core.gliner_client import GlinerClient
 
 # Define Mock Actions
 def execute_transfer(context):
@@ -13,7 +13,7 @@ def execute_transfer(context):
     if "amount" not in context.slots:
         raise ValueError("Missing amount")
     
-    amount = float(context.slots.get("amount"))
+    amount = float(context.slots.get("amount")[0])
     if amount > 1000:
         print("[SYSTEM] Transfer Failed: Insufficient Funds")
         return "insufficient_funds"
@@ -36,8 +36,8 @@ def to_float(value):
 
 def main():
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    config_path = os.path.join(base_dir, "config", "simple_flow.json")
-    client = LLMClient()
+    config_path = os.path.join(base_dir, "config", "banking_flow.json")
+    client = GlinerClient()
     engine = DialogEngine(config_path, client)
     
     # Register Actions
