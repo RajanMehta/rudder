@@ -6,7 +6,7 @@
         "root": {
             "description": "The main menu. The user can ask for banking services.",
             "response_template": "Welcome! How can I help you today?",
-            "fallback_behavior": "auto_reclassify",
+            "fallback_behavior": "oos",
             "transitions": [
                 {
                     "intent": "check_balance",
@@ -34,7 +34,11 @@
             "slots_optional": [
                 "memo"
             ],
-            "slot_config": {},
+            "slot_config": {
+                "amount": {
+                    "validator": "validate_positive"
+                }
+            },
             "response_prompt": "Ask the user for the amount and recipient. If provided, also capture the memo.",
             "fallback_behavior": "ask_reclassify",
             "transitions": [
@@ -62,19 +66,11 @@
             "fallback_behavior": "ask_reclassify",
             "transitions": [
                 {
-                    "intent": "yes",
+                    "intent": "affirmation",
                     "target": "transfer_execute"
                 },
                 {
-                    "intent": "confirm",
-                    "target": "transfer_execute"
-                },
-                {
-                    "intent": "no",
-                    "target": "transfer_flow_start"
-                },
-                {
-                    "intent": "cancel",
+                    "intent": "negation",
                     "target": "root"
                 }
             ]
@@ -92,7 +88,7 @@
             "response_template": "I'm sorry, you don't have enough funds for this transfer.",
             "transitions": [
                 {
-                    "intent": "ok",
+                    "intent": "affirmation",
                     "target": "root"
                 }
             ]
@@ -100,39 +96,24 @@
         "transfer_success": {
             "description": "Transfer completed successfully.",
             "response_template": "Success! The money has been sent.",
-            "transitions": [
-                {
-                    "intent": "ok",
-                    "target": "root"
-                }
-            ]
+            "type": "terminal"
         },
         "transfer_error_state": {
             "response_template": "I'm sorry, something went wrong with the transfer. Please try again later.",
             "transitions": [
                 {
-                    "intent": "ok",
+                    "intent": "affirmation",
                     "target": "root"
                 }
             ]
         },
         "system_error": {
             "response_template": "I encountered a system error. Returning to the main menu.",
-            "transitions": [
-                {
-                    "intent": "ok",
-                    "target": "root"
-                }
-            ]
+            "type": "terminal"
         },
         "out_of_scope": {
             "response_template": "I'm sorry, I didn't understand that. Could you please rephrase?",
-            "transitions": [
-                {
-                    "intent": "ok",
-                    "target": "root"
-                }
-            ]
+            "type": "terminal"
         }
     }
 }

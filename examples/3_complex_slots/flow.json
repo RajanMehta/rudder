@@ -4,95 +4,87 @@
     },
     "states": {
         "root": {
-            "description": "Main Banking Menu",
-            "response_template": "Welcome to BankAI. You can check balance or transfer money.",
+            "description": "Main menu for card management.",
+            "response_template": "Welcome! How can I help with your card today? (Lost/Stolen, Freeze, or Rewards)",
+            "fallback_behavior": "ask_reclassify",
             "transitions": [
                 {
-                    "intent": "check_balance",
-                    "target": "view_balance"
+                    "intent": "report_lost_stolen",
+                    "target": "lost_stolen_flow"
                 },
                 {
-                    "intent": "transfer_money",
-                    "target": "transfer_start"
+                    "intent": "check_rewards",
+                    "target": "rewards_faq"
                 }
             ]
         },
-        "view_balance": {
-            "description": "Check balance for account.",
-            "slots_required": [
-                "account_type"
-            ],
+        "rewards_faq": {
+            "response_template": "You earn 2 points for groceries, 1 point elsewhere.",
             "transitions": [
                 {
-                    "intent": "provide_account",
-                    "target": "get_balance_action",
-                    "condition": "all_slots_filled"
-                }
-            ],
-            "response_prompt": "Ask for account type (checking/savings)."
-        },
-        "get_balance_action": {
-            "type": "action",
-            "action_name": "get_balance",
-            "transitions": {
-                "success": "balance_shown"
-            }
-        },
-        "balance_shown": {
-            "response_template": "Your {account_type} balance is $5,000.",
-            "transitions": [
-                {
-                    "intent": "transfer_money",
-                    "target": "transfer_start"
-                },
-                {
-                    "intent": "thanks",
-                    "target": "root",
-                    "context_updates": {
-                        "clear_slots": [
-                            "account_type"
-                        ]
-                    }
+                    "intent": "back_to_menu",
+                    "target": "root"
                 }
             ]
         },
-        "transfer_start": {
-            "description": "Transfer start. Note: account_type might be shared from balance flow.",
+        "lost_stolen_flow": {
+            "description": "User is reporting a lost or stolen card. We need the card type and the last known location.",
             "slots_required": [
-                "account_type",
-                "amount",
-                "recipient"
+                "card_type",
+                "location"
             ],
+            "response_template": "I'm sorry to hear that. To help you, I need to know which card it was (e.g., Gold, Platinum) and where you last had it.",
             "transitions": [
                 {
                     "intent": "provide_info",
-                    "target": "transfer_exec",
+                    "target": "lost_stolen_confirm",
                     "condition": "all_slots_filled"
+                },
+                {
+                    "intent": "update_info",
+                    "target": "lost_stolen_flow"
                 }
-            ],
-            "response_prompt": "I need account type, amount and recipient."
+            ]
         },
-        "transfer_exec": {
+        "lost_stolen_confirm": {
+            "description": "Confirming details. If the user corrects a detail here, the slots will update and they can confirm again.",
+            "response_template": "I have it down as a {card_type} card lost at {location}. Is this correct? You can also tell me if I got something wrong.",
+            "transitions": [
+                {
+                    "intent": "affirmation",
+                    "target": "process_report"
+                },
+                {
+                    "intent": "negation",
+                    "target": "lost_stolen_flow"
+                },
+                {
+                    "intent": "update_info",
+                    "target": "lost_stolen_confirm"
+                }
+            ]
+        },
+        "process_report": {
             "type": "action",
-            "action_name": "transfer_func",
-            "transitions": {
-                "success": "transfer_success",
-                "error": "root"
-            }
+            "action_name": "report_lost_stolen_action",
+            "on_success": "report_complete",
+            "on_error": "system_error"
         },
-        "transfer_success": {
-            "response_template": "Transferred {amount} to {recipient} from {account_type}.",
+        "report_complete": {
+            "response_template": "Thank you. Your card has been blocked and a replacement is on the way!",
             "transitions": [
                 {
                     "intent": "ok",
-                    "target": "root",
-                    "context_updates": {
-                        "clear_slots": [
-                            "account_type",
-                            "amount",
-                            "recipient"
-                        ]
-                    }
+                    "target": "root"
+                }
+            ]
+        },
+        "system_error": {
+            "response_template": "I'm sorry, I'm having trouble processing your request. Please call customer support.",
+            "transitions": [
+                {
+                    "intent": "ok",
+                    "target": "root"
                 }
             ]
         }

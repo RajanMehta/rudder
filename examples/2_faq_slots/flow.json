@@ -1,44 +1,89 @@
 {
     "settings": {
-        "start_state": "baggage_menu"
+        "start_state": "root"
     },
     "states": {
-        "baggage_menu": {
-            "description": "Airline Baggage Helper. Menu.",
-            "response_template": "What kind of baggage do you have a question about? (Carry-on or Checked)",
+        "root": {
+            "description": "Main menu for card management.",
+            "response_template": "Welcome! You can activate a card, check rewards, or request a credit limit increase.",
+            "fallback_behavior": "ask_reclassify",
             "transitions": [
                 {
-                    "intent": "select_bag_type",
-                    "target": "baggage_policy",
-                    "condition": "all_slots_filled"
-                }
-            ],
-            "slots_required": [
-                "bag_type"
-            ]
-        },
-        "baggage_policy": {
-            "description": "Showing policy based on bag type.",
-            "response_prompt": "If {bag_type} is 'carry-on', say: 'Carry-on must fit under the seat.' If 'checked', say: 'Checked bags cost $30.'",
-            "transitions": [
-                {
-                    "intent": "another_question",
-                    "target": "baggage_menu",
-                    "context_updates": {
-                        "clear_slots": [
-                            "bag_type"
-                        ]
-                    }
+                    "intent": "check_rewards",
+                    "target": "rewards_faq"
                 },
                 {
-                    "intent": "thanks",
-                    "target": "baggage_menu"
+                    "intent": "credit_limit_increase",
+                    "target": "request_limit_increase"
+                },
+                {
+                    "intent": "cancel_card",
+                    "target": "cancel_card_flow"
                 }
             ]
         },
-        "root": {
-            "description": "Unused root fallback",
-            "transitions": []
+        "rewards_faq": {
+            "response_template": "You earn 2 points for groceries, 1 point elsewhere.",
+            "type": "terminal"
+        },
+        "request_limit_increase": {
+            "description": "User wants to increase their credit limit. We need the desired amount.",
+            "slots_required": [
+                "limit_amount"
+            ],
+            "response_template": "How much would you like your new credit limit to be?",
+            "transitions": [
+                {
+                    "intent": "provide_amount",
+                    "target": "limit_increase_success",
+                    "condition": "all_slots_filled"
+                }
+            ]
+        },
+        "cancel_card_flow": {
+            "description": "User wants to cancel a card. We need to know which card type.",
+            "slots_required": [
+                "card_type"
+            ],
+            "response_template": "Which card would you like to cancel? (e.g., Gold, Platinum, or Business)",
+            "transitions": [
+                {
+                    "intent": "provide_card_type",
+                    "target": "cancel_confirm",
+                    "condition": "all_slots_filled"
+                }
+            ]
+        },
+        "cancel_confirm": {
+            "response_template": "Are you sure you want to cancel your card? This cannot be undone.",
+            "transitions": [
+                {
+                    "intent": "affirmation",
+                    "target": "cancel_success"
+                },
+                {
+                    "intent": "negation",
+                    "target": "root"
+                }
+            ]
+        },
+        "limit_increase_success": {
+            "response_template": "Your request for a limit increase has been submitted for review!",
+            "transitions": [
+                {
+                    "intent": "ok",
+                    "target": "root"
+                }
+            ]
+        },
+        "cancel_success": {
+            "response_template": "Your card has been successfully cancelled.",
+            "transitions": [
+                {
+                    "intent": "ok",
+                    "target": "root"
+                }
+            ]
         }
     }
 }

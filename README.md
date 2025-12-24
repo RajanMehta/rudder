@@ -1,6 +1,18 @@
-# Rudder: Simplified Conversational Engine (WIP)
+# Rudder: Simplified Conversational Engine
 
-Rudder is a lightweight, JSON-configurable dialog engine that orchestrates LLM intelligence with deterministic state control. It serves as the "rudder" for your LLM, ensuring it stays on course through pre-defined conversational flows.
+Rudder is a lightweight, JSON-configurable **dialog engine** that orchestrates LLM intelligence with deterministic state control. It serves as the "rudder" for your LLM, ensuring it stays on course through pre-defined conversational flows.
+
+## Who is this for?
+
+Rudder is built for **Researchers, Developers and Conversational AI Engineers** who need to bridge the gap between flexible LLMs and strict business requirements. It is ideal for:
+
+*   **Rapid Prototyping (POCs)**: Developers who need to quickly build and iterate on robust proof-of-concepts without the overhead of enterprise tools (rasa, dialogflow, etc).
+*   **Architectural Blueprints**: Anyone looking for a structural checklist of the components required for reliable conversational AI (validators, enrichers, state logic) before starting a custom implementation.
+*   **Safety-First AI**: Teams who want to prevent LLM hallucinations by restricting the model's "action space" to specific, pre-defined scenarios.
+*   **LLM Benchmarking**: Researchers comparing how different LLMs perform in high-stakes, state-controlled conversational scenarios.
+
+> [!NOTE]
+> This project is currently in a research/prototyping phase and is not yet recommended for production use.
 
 ## Core Flow
 1.  **State Lookup**: The engine identifies the user's current state from the session context (or starts at `root`).
@@ -30,7 +42,7 @@ The entire conversational logic is defined in a JSON file. This schema allows fo
         { "intent": "book_flight", "target": "collect_city" },
         { "intent": "check_status", "target": "get_booking_id" }
       ],
-      "response_template": "Welcome! How can I help you today?"
+      "response_template": "Welcome! What's your destination?"
     },
     "collect_city": {
       "description": "Collect the destination city.",
@@ -62,14 +74,15 @@ The entire conversational logic is defined in a JSON file. This schema allows fo
         "success": "booking_confirmed",
         "unavailable": "collect_city",
         "error": "system_failure"
-      },
-      // Legacy fallback (optional)
-      "on_success": "booking_confirmed",
-      "on_error": "system_failure"
+      }
     },
     "booking_confirmed": {
       "response_template": "Your flight to {{destination}} is confirmed!",
-      "fallback_behavior": "ask_reclassify"
+      "terminal": true
+    },
+    "system_failure": {
+      "response_template": "I'm sorry, I was unable to process your request. Please try again.",
+      "terminal": true
     }
   }
 }
@@ -88,7 +101,7 @@ Each key in the `states` object represents a unique state ID.
 | Field | Type | Description |
 | :--- | :--- | :--- |
 | `description` | `string` | **Required.** Context provided to the LLM to help it understand the purpose of this state. |
-| `type` | `enum` | `standard` (default) or `action`. Action states execute code immediately upon entry. |
+| `type` | `enum` | `standard` (default) or `action` or `terminal`. Action states execute code immediately upon entry. Terminal states do not have any transitions. |
 | `slots_required` | `string[]` | List of slot names that *must* be filled to satisfy certain transition conditions. |
 | `slots_optional` | `string[]` | List of slot names that the engine should try to extract if present. |
 | `slot_config` | `object` | Map of slot names to their logic: `validator` (Python function name) and `enricher` (Python function name). |
@@ -113,9 +126,17 @@ Each key in the `states` object represents a unique state ID.
 *   **Dynamic Validations**: Plug in Python functions to validate data before it enters the context.
 *   **Graceful Fallbacks**: Configurable behavior for "Unknown" intents or "Action Errors".
 
-## Advanced Usage
-See the `examples/` directory for detailed patterns:
+## Usage
+See the `examples/` directory for detailed patterns in increasing order of complexity:
 1.  **Simple FAQ**: Intent-based navigation.
 2.  **Slot Filling**: Collecting required data with validation.
 3.  **Complex Flow**: Shared slots and multi-step processes.
 4.  **Error Handling**: Robust recovery from system failures.
+5.  **Banking Flow**: Full working example of a banking flow. (run `python main.py`)
+
+## Future Improvements
+1.  **Generative Models for NLU**: Identify other LLMs for NLU and add corresponding clients.
+2.  **Duckling for Slots**: Use [Duckling](https://github.com/facebook/duckling) for deterministic slot enrichment (for processing dates, amounts, etc.). Adds only ~10ms to inference time.
+3.  **Multi Intent**: Support for multiple intents in a single state. (e.g. setting `"multi_label": True` for Gliner and handling multiple intent from a single state.)
+4.  **Intent Disambiguation**: Support for disambiguating between multiple intents based on confidence-score based heuristics.
+5.  **Response Generation**: Support for generating responses using LLMs. (currently we are using static templates.)

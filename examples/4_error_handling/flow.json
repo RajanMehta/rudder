@@ -1,63 +1,117 @@
 {
     "settings": {
-        "start_state": "login"
+        "start_state": "root"
     },
     "states": {
-        "login": {
-            "response_template": "Please say your 4-digit PIN to login.",
+        "root": {
+            "description": "Main menu for comprehensive card management.",
+            "response_template": "How can I help you today? You can replace your card, check rewards, or speak to an agent.",
+            "fallback_behavior": "ask_reclassify",
+            "transitions": [
+                {
+                    "intent": "replace_card",
+                    "target": "replace_card_flow"
+                },
+                {
+                    "intent": "check_rewards",
+                    "target": "rewards_faq"
+                },
+                {
+                    "intent": "agent_handoff",
+                    "target": "human_agent"
+                }
+            ]
+        },
+        "rewards_faq": {
+            "response_template": "You earn 2 points for groceries, 1 point elsewhere.",
+            "transitions": [
+                {
+                    "intent": "back_to_menu",
+                    "target": "root"
+                }
+            ]
+        },
+        "replace_card_flow": {
+            "description": "Replacing a card. Requires replacement_type (Standard/Premium) and a valid 4-digit security code.",
             "slots_required": [
-                "pin"
+                "replacement_type",
+                "security_code"
             ],
             "slot_config": {
-                "pin": {
-                    "validator": "is_4_digits"
+                "security_code": {
+                    "validator": "validate_4_digits"
                 }
             },
+            "response_template": "To replace your card, please tell me the type (Standard or Premium) and your 4-digit security code for verification.",
+            "fallback_behavior": "ask_reclassify",
             "transitions": [
                 {
-                    "intent": "provide_pin",
-                    "target": "verify_pin",
+                    "intent": "provide_details",
+                    "target": "replace_confirm",
                     "condition": "all_slots_filled"
-                }
-            ],
-            "fallback_behavior": "ask_reclassify"
-        },
-        "verify_pin": {
-            "type": "action",
-            "action_name": "verify_pin_api",
-            "transitions": {
-                "success": "dashboard",
-                "invalid_pin": "login_error",
-                "api_down": "system_error"
-            }
-        },
-        "login_error": {
-            "response_template": "That PIN is invalid. Please try again.",
-            "transitions": [
-                {
-                    "intent": "provide_pin",
-                    "target": "verify_pin",
-                    "context_updates": {
-                        "clear_slots": [
-                            "pin"
-                        ]
-                    }
                 },
                 {
                     "intent": "cancel",
-                    "target": "quit"
+                    "target": "root"
+                }
+            ]
+        },
+        "replace_confirm": {
+            "response_template": "Confirming a {replacement_type} card replacement. Shall I proceed?",
+            "transitions": [
+                {
+                    "intent": "affirmation",
+                    "target": "execute_replacement"
+                },
+                {
+                    "intent": "negation",
+                    "target": "root"
+                }
+            ]
+        },
+        "execute_replacement": {
+            "type": "action",
+            "action_name": "replace_card_action",
+            "transitions": {
+                "success": "replace_success",
+                "verification_failed": "replace_card_flow",
+                "error": "system_error"
+            }
+        },
+        "replace_success": {
+            "response_template": "Your new card has been ordered and will arrive in 3-5 business days.",
+            "transitions": [
+                {
+                    "intent": "ok",
+                    "target": "root"
+                }
+            ]
+        },
+        "human_agent": {
+            "response_template": "I'm connecting you to a human agent now. Please hold...",
+            "transitions": []
+        },
+        "out_of_scope": {
+            "response_template": "I'm not sure I can help with that. Would you like to speak to an agent or return to the main menu?",
+            "transitions": [
+                {
+                    "intent": "agent_handoff",
+                    "target": "human_agent"
+                },
+                {
+                    "intent": "back_to_menu",
+                    "target": "root"
                 }
             ]
         },
         "system_error": {
-            "response_template": "Our system is currently down. Please call support.",
-            "transitions": []
-        },
-        "dashboard": {
-            "response_template": "Welcome to your dashboard!"
-        },
-        "quit": {
-            "response_template": "Goodbye!"
+            "response_template": "Something went wrong on our end. Please try again later.",
+            "transitions": [
+                {
+                    "intent": "ok",
+                    "target": "root"
+                }
+            ]
         }
     }
 }

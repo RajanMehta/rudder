@@ -4,46 +4,42 @@
     },
     "states": {
         "root": {
-            "description": "Welcome to the Store FAQ bot. Helps with hours and locations.",
-            "response_template": "Hi! I can help you with store hours and locations.",
+            "description": "Main menu for card management.",
+            "response_template": "Welcome to Card Services! You can ask about activating your card, rewards, or freezing your card.",
+            "fallback_behavior": "ask_reclassify",
             "transitions": [
                 {
-                    "intent": "ask_hours",
-                    "target": "hours_info"
+                    "intent": "activate_card",
+                    "target": "activate_card_faq"
                 },
                 {
-                    "intent": "ask_location",
-                    "target": "location_info"
+                    "intent": "check_rewards",
+                    "target": "rewards_faq"
+                },
+                {
+                    "intent": "freeze_card",
+                    "target": "freeze_faq"
                 }
             ]
         },
-        "hours_info": {
-            "description": "Providing store hours.",
-            "response_template": "We are open Monday-Friday, 9am to 9pm.",
-            "transitions": [
-                {
-                    "intent": "thanks",
-                    "target": "root"
-                },
-                {
-                    "intent": "ask_location",
-                    "target": "location_info"
-                }
-            ]
+        "activate_card_faq": {
+            "description": "FAQ for card activation.",
+            "response_template": "To activate your card, please visit our mobile app or call the number on the back of your card.",
+            "type": "terminal"
         },
-        "location_info": {
-            "description": "Providing store locations.",
-            "response_template": "We are located at 123 Main St, Springfield.",
-            "transitions": [
-                {
-                    "intent": "thanks",
-                    "target": "root"
-                },
-                {
-                    "intent": "ask_hours",
-                    "target": "hours_info"
-                }
-            ]
+        "rewards_faq": {
+            "description": "FAQ for rewards points.",
+            "response_template": "You earn 2 points for every dollar spent on groceries and 1 point elsewhere. Check your balance in the 'Rewards' tab.",
+            "type": "terminal"
+        },
+        "freeze_faq": {
+            "description": "FAQ for freezing a card.",
+            "response_template": "If you've misplaced your card, you can freeze it instantly in the app to prevent unauthorized charges.",
+            "type": "terminal"
+        },
+        "out_of_scope": {
+            "response_template": "I'm sorry, I couldn't understand that. Could you please rephrase your request about your card?",
+            "type": "terminal"
         }
     }
 }
