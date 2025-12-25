@@ -126,7 +126,33 @@ Each key in the `states` object represents a unique state ID.
 *   **Dynamic Validations**: Plug in Python functions to validate data before it enters the context.
 *   **Graceful Fallbacks**: Configurable behavior for "Unknown" intents or "Action Errors".
 
-## Usage
+## Local development setup
+
+To run different development tasks like debugging and code-formatting run the following commands
+1. This repository requires `python 3.13` and `poetry` which is a python dependency manager.
+2. Let poetry know that it should expect a virtual environment within the project directory
+```
+poetry config virtualenvs.in-project true
+``` 
+3. Create a virtual env with name `.venv` as poetry tries to find that name by default.
+```
+python3.13 -m venv .venv
+```
+4. Activate the environment
+```
+poetry shell
+```
+5. Install packages
+```
+poetry install
+```
+6. You should now be able to run the main.py file
+```
+python main.py
+```
+7. Run `make help` to find other available commands
+
+## Usage / Tutorial
 See the `examples/` directory for detailed patterns in increasing order of complexity:
 1.  **Simple FAQ**: Intent-based navigation.
 2.  **Slot Filling**: Collecting required data with validation.

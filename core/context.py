@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
+
 
 @dataclass
 class DialogContext:
@@ -8,7 +9,7 @@ class DialogContext:
     slots: Dict[str, Any] = field(default_factory=dict)
     history: List[Dict[str, str]] = field(default_factory=list)
     previous_state: Optional[str] = None
-    
+
     def add_turn(self, role: str, text: str):
         self.history.append({"role": role, "text": text})
 
@@ -19,5 +20,5 @@ class DialogContext:
         return {
             "current_state": self.current_state,
             "slots": self.slots,
-            "last_turn": self.history[-1] if self.history else None
+            "last_turn": self.history[-1] if self.history else None,
         }

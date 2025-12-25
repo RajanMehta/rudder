@@ -1,5 +1,7 @@
-from typing import Dict, Any, List
+from typing import Any, Dict
+
 from gliner2 import GLiNER2
+
 
 class GlinerClient:
     def __init__(self, model_id: str = "fastino/gliner2-base-v1"):
@@ -13,23 +15,27 @@ class GlinerClient:
         """
         # Create schema object from config
         schema = self.extractor.create_schema()
-        
+
         if "entities" in schema_config:
             schema = schema.entities(schema_config["entities"])
-            
+
         if "classification" in schema_config:
             label, classes = schema_config["classification"]
             schema = schema.classification(label, classes)
-            
+
         # Perform extraction
         include_confidence = True
-        results = self.extractor.extract(text, schema, include_confidence=include_confidence)
+        results = self.extractor.extract(
+            text, schema, include_confidence=include_confidence
+        )
 
         output = {
             "entities": results.get("entities", {}),
-            "intent": results.get("intent", "UNKNOWN").get("label", "UNKNOWN") if include_confidence else results.get("intent", "UNKNOWN")
+            "intent": results.get("intent", "UNKNOWN").get("label", "UNKNOWN")
+            if include_confidence
+            else results.get("intent", "UNKNOWN"),
         }
-        
+
         print(f"\n[GLiNER Raw Output]: {results}\n")
         return output
 

@@ -1,11 +1,12 @@
-import sys
 import os
+import sys
 
 # Add current directory to path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from core.gliner_client import GlinerClient
 from core.prompt_builder import PromptBuilder
+
 
 def test_llm_client():
     print("Initializing LLMClient...")

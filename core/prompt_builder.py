@@ -1,25 +1,29 @@
 import json
-from typing import Dict, List, Any
+from typing import Any, Dict
+
 
 class PromptBuilder:
     def __init__(self):
         pass
 
-    def build_constraint_prompt(self, state_config: Dict[str, Any], context_snapshot: Dict[str, Any]) -> str:
+    def build_constraint_prompt(
+        self, state_config: Dict[str, Any], context_snapshot: Dict[str, Any]
+    ) -> str:
         """
         Constructs the strict constraint prompt for the NLU.
         """
         transitions = state_config.get("transitions", [])
         intent_list = [t["intent"] for t in transitions]
-        
+
         required_slots = state_config.get("slots_required", [])
         optional_slots = state_config.get("slots_optional", [])
-        
+
         if not required_slots and not optional_slots:
             extraction_instructions = "2. Entity Extraction: Do NOT extract any entities. Return an empty dictionary."
             entities_json_template = '"entities": {}'
         else:
-            extraction_instructions = f"""2. Entity Extraction: Extract values for the following slots if present in the input:
+            extraction_instructions = f"""
+2. Entity Extraction: Extract values for the following slots if present in the input:
    - Required Slots: {json.dumps(required_slots)}
    - Optional Slots: {json.dumps(optional_slots)}
    - Return entities as a dictionary where keys are the specific slot names from the lists above."""
@@ -61,17 +65,14 @@ class GlinerPromptBuilder:
         """
         transitions = state_config.get("transitions", [])
         intent_labels = [t["intent"] for t in transitions]
-        
+
         required_slots = state_config.get("slots_required", [])
         optional_slots = state_config.get("slots_optional", [])
-        
+
         entities = {}
         for slot in required_slots + optional_slots:
             # In a real scenario, we might want to map slot names to descriptions
             # For now, we use the slot name as the description
             entities[slot] = f"Extract the {slot} from the text"
 
-        return {
-            "entities": entities,
-            "classification": ("intent", intent_labels)
-        }
+        return {"entities": entities, "classification": ("intent", intent_labels)}

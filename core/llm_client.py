@@ -1,7 +1,8 @@
 import json
-import torch
-from typing import Dict, Any, List
+from typing import Any, Dict, List
+
 from transformers import AutoModelForCausalLM, AutoTokenizer
+
 
 class LLMClient:
     def __init__(self):
@@ -17,7 +18,9 @@ class LLMClient:
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_id)
         print("Model loaded.")
 
-    def _generate(self, messages: List[Dict[str, str]], max_new_tokens: int = 1024) -> str:
+    def _generate(
+        self, messages: List[Dict[str, str]], max_new_tokens: int = 1024
+    ) -> str:
         input_ids = self.tokenizer.apply_chat_template(
             messages,
             add_generation_prompt=True,
@@ -30,10 +33,12 @@ class LLMClient:
             do_sample=False,
             max_new_tokens=max_new_tokens,
         )
-        
+
         # Decode only the new tokens
-        generated_ids = output[0][len(input_ids[0]):]
-        return self.tokenizer.decode(generated_ids, skip_special_tokens=True, temperature=0)
+        generated_ids = output[0][len(input_ids[0]) :]
+        return self.tokenizer.decode(
+            generated_ids, skip_special_tokens=True, temperature=0
+        )
 
     def predict(self, prompt: str, system_prompt: str = "") -> Dict[str, Any]:
         """
@@ -41,7 +46,7 @@ class LLMClient:
         """
         messages = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"User Input: {prompt}"}
+            {"role": "user", "content": f"User Input: {prompt}"},
         ]
         response_text = self._generate(messages)
         print(f"\n[LLM Raw Output]: {response_text}\n")
@@ -49,8 +54,8 @@ class LLMClient:
         # Extract JSON
         try:
             # simple heuristic to find JSON block
-            start = response_text.find('{')
-            end = response_text.rfind('}') + 1
+            start = response_text.find("{")
+            end = response_text.rfind("}") + 1
             if start != -1 and end != -1:
                 json_str = response_text[start:end]
                 return json.loads(json_str)
@@ -71,26 +76,28 @@ class LLMClient:
         core_instruction = parts[0]
         context_str = parts[1] if len(parts) > 1 else "{}"
 
-        system_instructions = """Your task is to generate natural language responses based on the provided instruction and context.
-Replace values in the instruction with the ones in context to understand required tone of the response.
-You MUST output strict JSON in the following format:
+        system_instructions = """Your task is to generate natural language responses based on the provided 
+instruction and context. Replace values in the instruction with the ones in context to understand required 
+tone of the response. You MUST output strict JSON in the following format:
 {
   "answer": "Your natural language response here"
 }
 """
-        
-        formatted_user_content = f"Context: {context_str}\nInstruction: {core_instruction}\nOutput:"
+
+        formatted_user_content = (
+            f"Context: {context_str}\nInstruction: {core_instruction}\nOutput:"
+        )
 
         messages = [
-             {"role": "system", "content": system_instructions},
-             {"role": "user", "content": formatted_user_content}
+            {"role": "system", "content": system_instructions},
+            {"role": "user", "content": formatted_user_content},
         ]
-        
+
         response_text = self._generate(messages)
         # Primary: try to parse extracted JSON and return the text content.
         try:
-            start = response_text.find('{')
-            end = response_text.rfind('}') + 1
+            start = response_text.find("{")
+            end = response_text.rfind("}") + 1
             if start != -1 and end != -1:
                 json_str = response_text[start:end]
                 data = json.loads(json_str)
@@ -98,6 +105,6 @@ You MUST output strict JSON in the following format:
                     return data["answer"]
         except Exception:
             pass
-            
+
         # Fallback: assume raw text if parsing failed
         return response_text
