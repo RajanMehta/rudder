@@ -94,7 +94,9 @@ class DialogEngine:
             # Enrichment
             enricher_name = config_item.get("enricher")
             if enricher_name:
-                v = self.validators.enrich(enricher_name, v)
+                # v is a list of entities. Assuming the first one is the one we want to enrich.
+                enricher_response = self.validators.enrich(enricher_name, v[0]["text"])
+                v[0]["value"] = enricher_response
 
             context.update_slot(k, v)
 

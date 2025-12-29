@@ -6,6 +6,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from core.engine import DialogEngine
 from core.gliner_client import GlinerClient
+from core.duckling_enrichers import DucklingEnricher
 
 # Define Mock Actions
 def execute_transfer(context):
@@ -44,10 +45,14 @@ def main():
     engine.actions.register("execute_transfer_func", execute_transfer)
     engine.actions.register("get_balance", get_balance)
     
-    # Register Validators/Enrichers
+    # Register Validators
     engine.validators.register_validator("is_positive_number", validate_positive)
-    engine.validators.register_enricher("to_float", to_float)
     
+    # Register Enrichers
+    engine.validators.register_enricher("to_float", to_float)
+    duckling = DucklingEnricher()
+    engine.validators.register_enricher("enrich_amount_of_money", duckling.enrich_amount_of_money)
+
     context = engine.start_session("session_123")
     
     print("--- Dialog System Started (Type 'exit' to quit) ---")

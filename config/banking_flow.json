@@ -36,7 +36,8 @@
             ],
             "slot_config": {
                 "amount": {
-                    "validator": "validate_positive"
+                    "validator": "validate_positive",
+                    "enricher": "enrich_amount_of_money"
                 }
             },
             "response_prompt": "Ask the user for the amount and recipient. If provided, also capture the memo.",
