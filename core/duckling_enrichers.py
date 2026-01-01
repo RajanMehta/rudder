@@ -1,12 +1,15 @@
-import requests
 import logging
 from typing import Any, Dict, List
+
+import requests
 
 logger = logging.getLogger(__name__)
 
 
 class DucklingEnricher:
-    def __init__(self, base_url: str = "http://0.0.0.0:8000", locale: str = "en_GB"):
+    def __init__(
+        self, base_url: str = "http://duckling-server:8000", locale: str = "en_GB"
+    ):
         self.base_url = base_url
         self.locale = locale
 

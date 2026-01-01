@@ -1,0 +1,25 @@
+services:
+  app:
+    image: rudder:latest
+    build: .
+    command: tail -f /dev/null
+    volumes:
+      - .:/app
+      - ~/.cache/huggingface:/root/.cache/huggingface
+    tty: true
+    stdin_open: true
+    networks:
+      - main-net
+
+  duckling-server:
+    image: rajan2812/duckling:v0.2.0.0
+    networks:
+      - main-net
+    expose:
+      - "8000"
+    ports:
+      - "8000:8000"
+
+networks:
+  main-net:
+    driver: bridge

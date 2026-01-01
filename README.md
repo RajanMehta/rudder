@@ -126,6 +126,12 @@ Each key in the `states` object represents a unique state ID.
 *   **Dynamic Validations**: Plug in Python functions to validate data before it enters the context.
 *   **Graceful Fallbacks**: Configurable behavior for "Unknown" intents or "Action Errors".
 
+## Quick Start with docker
+
+1. Run `make build` to build the docker image
+2. Run `make run` to start the dialog system (runs `python main.py` inside the docker container)
+3. Run `make down` to stop the dialog system
+
 ## Local development setup
 
 To run different development tasks like debugging and code-formatting run the following commands
