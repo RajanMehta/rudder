@@ -164,17 +164,7 @@ class DialogEngine:
 
         # Resolve transition based on result
         transitions = state_config.get("transitions", {})
-
-        # Fallback to legacy on_success/on_error if transitions not defined
-        # But per new design, we check transitions first
         next_state = transitions.get(result)
-
-        if not next_state:
-            # Backward compatibility / Simple binary handling handling
-            if result == "success":
-                next_state = state_config.get("on_success")
-            else:
-                next_state = state_config.get("on_error")
 
         if not next_state:
             logger.error(
@@ -191,7 +181,17 @@ class DialogEngine:
     def _generate_response(self, state_config: Dict, context: DialogContext) -> str:
         # Static Template
         if "response_template" in state_config:
-            return state_config["response_template"]
+            template = state_config["response_template"]
+            # Simple variable substitution
+            for key, value in context.slots.items():
+                if isinstance(value, list) and value:
+                    # Just take the first value for now if it's a list
+                    val_str = str(value[0].get("value", value[0].get("text", "")))
+                    template = template.replace(f"{{{{{key}}}}}", val_str)
+                else:
+                    # Handle direct generic values
+                    template = template.replace(f"{{{{{key}}}}}", str(value))
+            return template
 
         # LLM Generation
         if "response_prompt" in state_config:

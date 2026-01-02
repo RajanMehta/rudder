@@ -36,7 +36,6 @@ class GlinerClient:
             else results.get("intent", "UNKNOWN"),
         }
 
-        print(f"\n[GLiNER Raw Output]: {results}\n")
         return output
 
     def generate_response(self, prompt: str) -> str:

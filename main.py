@@ -10,20 +10,18 @@ from core.duckling_enrichers import DucklingEnricher
 
 # Define Mock Actions
 def execute_transfer(context):
-    print("\n[SYSTEM] Executing Transfer...")
     if "amount" not in context.slots:
         raise ValueError("Missing amount")
     
     amount = float(context.slots.get("amount")[0])
     if amount > 1000:
-        print("[SYSTEM] Transfer Failed: Insufficient Funds")
         return "insufficient_funds"
         
-    print(f"[SYSTEM] Transferred {amount} to {context.slots.get('recipient')}")
     return "success"
 
 def get_balance(context):
-    print(f"\n[SYSTEM] Balance is $5,000")
+    context.slots["balance"] = 5000
+    return "success"
 
 # Validators & Enrichers
 def validate_positive(value):
@@ -67,6 +65,7 @@ def main():
             break
             
         response = engine.process_turn(user_input, context)
+        print(f"Context: {context}")
         print(f"Bot: {response}")
 
 if __name__ == "__main__":

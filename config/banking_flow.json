@@ -19,11 +19,17 @@
             ]
         },
         "view_balance": {
-            "description": "Displaying the user's account balance.",
+            "description": "Displaying the user's balance.",
             "type": "action",
             "action_name": "get_balance",
-            "on_success": "root",
-            "on_error": "system_error"
+            "transitions": {
+                "success": "balance_displayed",
+                "error": "system_error"
+            }
+        },
+        "balance_displayed": {
+            "response_template": "Your balance is ${{balance}}",
+            "type": "terminal"
         },
         "transfer_flow_start": {
             "description": "Initiating a money transfer. We need to know who to send it to and how much.",

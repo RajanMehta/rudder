@@ -67,8 +67,10 @@
         "process_report": {
             "type": "action",
             "action_name": "report_lost_stolen_action",
-            "on_success": "report_complete",
-            "on_error": "system_error"
+            "transitions": {
+                "success": "report_complete",
+                "error": "system_error"
+            }
         },
         "report_complete": {
             "response_template": "Thank you. Your card has been blocked and a replacement is on the way!",
