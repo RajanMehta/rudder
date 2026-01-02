@@ -13,7 +13,7 @@ def execute_transfer(context):
     if "amount" not in context.slots:
         raise ValueError("Missing amount")
     
-    amount = float(context.slots.get("amount")[0])
+    amount = float(context.slots.get("amount"))
     if amount > 1000:
         return "insufficient_funds"
         

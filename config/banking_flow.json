@@ -69,7 +69,7 @@
         },
         "transfer_confirm": {
             "description": "Waiting for user confirmation to execute transfer.",
-            "response_prompt": "Ask the user to confirm the transfer of {amount} to {recipient}.",
+            "response_template": "Confirm the transfer of {{amount}} to {{recipient}}.",
             "fallback_behavior": "ask_reclassify",
             "transitions": [
                 {

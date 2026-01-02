@@ -62,18 +62,32 @@ class DialogEngine:
 
     def process_turn(self, user_input: str, context: DialogContext) -> str:
         logger.info(f"Processing turn: {user_input} in state {context.current_state}")
-        context.add_turn("user", user_input)
 
+        state_in = context.current_state
         current_state_config = self.states[context.current_state]
+        bot_response = ""
 
         # 1. Check if current state has an Action (Immediate Execution)
-        # This usually happens if we transitioned to an action state in the previous turn
-        # If current state is Terminal, go back to start state
         if current_state_config.get("type") == "action":
-            return self._handle_action_state(context, current_state_config)
+            # standard flow: User Input -> NLU -> Slot -> Transition -> (Action -> Transition) -> Response
+            # But if we are in an action state, it usually means we auto-transitioned here.
+
+            bot_response = self._handle_action_state(context, current_state_config)
+            # If action state returns a response, we stop here.
+            # We need to record this.
+            context.record_turn(
+                user_input,
+                state_in,
+                context.current_state,
+                bot_response,
+                context.slots.copy(),
+            )
+            return bot_response
         elif current_state_config.get("type") == "terminal":
             context.current_state = self.config["settings"]["start_state"]
             current_state_config = self.states[context.current_state]
+            # State IN was terminal (or previous was terminal), we reset to start.
+            state_in = context.current_state
 
         # 2. NLU Step: Determine Intent
         nlu_result = self._run_nlu(user_input, current_state_config, context)
@@ -86,15 +100,13 @@ class DialogEngine:
             # Validation
             config_item = slot_config.get(k, {})
             validator_name = config_item.get("validator")
-            if validator_name:
-                if not self.validators.validate(validator_name, v):
-                    logger.warning(f"Slot {k}={v} failed validation {validator_name}")
-                    continue  # Skip invalid slot
+            if validator_name and not self.validators.validate(validator_name, v):
+                logger.warning(f"Slot {k}={v} failed validation {validator_name}")
+                continue
 
             # Enrichment
             enricher_name = config_item.get("enricher")
             if enricher_name:
-                # v is a list of entities. Assuming the first one is the one we want to enrich.
                 enricher_response = self.validators.enrich(enricher_name, v[0]["text"])
                 v[0]["value"] = enricher_response
 
@@ -107,15 +119,27 @@ class DialogEngine:
         if next_state:
             context.previous_state = context.current_state
             context.current_state = next_state
-            # Check if the new state is an action state and run it immediately?
-            # Ideally, we return the response for the NEW state.
+
+            # Check if the new state is an action state and run it immediately
             new_state_config = self.states[next_state]
             if new_state_config.get("type") == "action":
-                return self._handle_action_state(context, new_state_config)
-            return self._generate_response(new_state_config, context)
+                bot_response = self._handle_action_state(context, new_state_config)
+            else:
+                bot_response = self._generate_response(new_state_config, context)
         else:
             # Fallback
-            return self._handle_fallback(context, current_state_config)
+            bot_response = self._handle_fallback(context, current_state_config)
+
+        # Record the full turn
+        context.record_turn(
+            user_input,
+            state_in,
+            context.current_state,
+            bot_response,
+            context.slots.copy(),
+        )
+
+        return bot_response
 
     def _run_nlu(
         self, user_input: str, state_config: Dict, context: DialogContext
@@ -184,13 +208,8 @@ class DialogEngine:
             template = state_config["response_template"]
             # Simple variable substitution
             for key, value in context.slots.items():
-                if isinstance(value, list) and value:
-                    # Just take the first value for now if it's a list
-                    val_str = str(value[0].get("value", value[0].get("text", "")))
-                    template = template.replace(f"{{{{{key}}}}}", val_str)
-                else:
-                    # Handle direct generic values
-                    template = template.replace(f"{{{{{key}}}}}", str(value))
+                # Value is already normalized by context.update_slot
+                template = template.replace(f"{{{{{key}}}}}", str(value))
             return template
 
         # LLM Generation
