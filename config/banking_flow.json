@@ -46,13 +46,13 @@
                     "enricher": "enrich_amount_of_money"
                 }
             },
-            "response_prompt": "Ask the user for the amount and recipient. If provided, also capture the memo.",
+            "response_function": "ask_transfer_info",
             "fallback_behavior": "ask_reclassify",
             "transitions": [
                 {
                     "intent": "transfer_information",
                     "target": "transfer_confirm",
-                    "condition": "all_slots_filled"
+                    "condition": "check_transfer_slots"
                 },
                 {
                     "intent": "cancel",

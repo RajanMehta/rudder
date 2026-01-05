@@ -111,6 +111,7 @@ Each key in the `states` object represents a unique state ID.
 | `on_error` | `string` | Legacy fallback for action states if `transitions` map doesn't match an "error" result. |
 | `response_template` | `string` | A static text string to return to the user. |
 | `response_prompt` | `string` | A prompt for the LLM to generate a dynamic, natural language response. |
+| `response_function` | `string` | Name of a registered Python function to dynamically generate key-value response strings. |
 | `fallback_behavior` | `enum` | `oos` (default): Go to `out_of_scope` state.<br>`ask_reclassify`: Prompt the user for clarification. |
 
 #### Transition Object (Standard State)
@@ -118,12 +119,13 @@ Each key in the `states` object represents a unique state ID.
 | :--- | :--- | :--- |
 | `intent` | `string` | The user intent that triggers this transition. |
 | `target` | `string` | The ID of the state to transition to. |
-| `condition` | `enum` | `all_slots_filled`: Only transition if all `slots_required` are present in context. |
+| `condition` | `string` | Name of a registered Python function. The function determines the next state based on context. |
 | `context_updates` | `object` | Logic to modify memory. Supported: `clear_slots` (list of strings). |
 
 ## Features
 *   **Stateless LLM Logic**: The LLM never sees the whole graph, only the immediate valid options.
 *   **Dynamic Validations**: Plug in Python functions to validate data before it enters the context.
+*   **Custom Logic**: Register Python functions for complex state transitions (`conditions`) and dynamic responses (`response_functions`).
 *   **Graceful Fallbacks**: Configurable behavior for "Unknown" intents or "Action Errors".
 
 ## Quick Start with docker
@@ -146,7 +148,7 @@ python3.13 -m venv .venv
 ```
 4. Activate the environment
 ```
-poetry shell
+source .venv/bin/activate
 ```
 5. Install packages
 ```

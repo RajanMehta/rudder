@@ -33,6 +33,28 @@ def validate_positive(value):
 def to_float(value):
     return float(value)
 
+# Condition Functions
+def check_transfer_slots(context, target_state):
+    required = ["amount", "recipient"]
+    # Check if slots exist AND have truthy values (e.g. not empty list, not None)
+    if all(context.slots.get(k) for k in required):
+        return target_state
+    return context.current_state # Stay here if not filled
+
+# Response Functions
+def ask_transfer_info(context):
+    # Check truthiness of values
+    has_amount = bool(context.slots.get("amount"))
+    has_recipient = bool(context.slots.get("recipient"))
+    
+    if not has_amount and not has_recipient:
+        return "Who would you like to transfer money to, and how much?"
+    if not has_amount:
+        return "How much would you like to transfer?"
+    if not has_recipient:
+        return "Who is the recipient?"
+    return "Thinking..."
+
 def main():
     base_dir = os.path.dirname(os.path.abspath(__file__))
     config_path = os.path.join(base_dir, "config", "banking_flow.json")
@@ -50,6 +72,9 @@ def main():
     engine.validators.register_enricher("to_float", to_float)
     duckling = DucklingEnricher()
     engine.validators.register_enricher("enrich_amount_of_money", duckling.enrich_amount_of_money)
+
+    engine.conditions.register("check_transfer_slots", check_transfer_slots)
+    engine.responses.register("ask_transfer_info", ask_transfer_info)
 
     context = engine.start_session("session_123")
     

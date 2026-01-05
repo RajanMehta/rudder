@@ -1,6 +1,7 @@
 import json
 import logging
-from typing import Dict, Optional
+from dataclasses import dataclass, field
+from typing import Any, Dict, Optional
 
 from .context import DialogContext
 from .llm_client import LLMClient
@@ -8,6 +9,41 @@ from .prompt_builder import GlinerPromptBuilder
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class ConditionRegistry:
+    _conditions: Dict[str, Any] = field(default_factory=dict)
+
+    def register(self, name, func):
+        self._conditions[name] = func
+
+    def check(self, name, context: DialogContext, target_state: str) -> Optional[str]:
+        """
+        Executes the condition function.
+        Expected return from function:
+         - A string representing the next state (could be target or something else)
+         - None (if condition is not 'met' in a way that implies a transition,
+         though the user spec says it returns next state)
+        """
+        if name not in self._conditions:
+            logger.warning(f"Condition {name} not found")
+            return None
+        return self._conditions[name](context, target_state)
+
+
+@dataclass
+class ResponseRegistry:
+    _responses: Dict[str, Any] = field(default_factory=dict)
+
+    def register(self, name, func):
+        self._responses[name] = func
+
+    def generate(self, name, context: DialogContext) -> Optional[str]:
+        if name not in self._responses:
+            logger.warning(f"Response function {name} not found")
+            return None
+        return self._responses[name](context)
 
 
 class ActionRegistry:
@@ -54,6 +90,8 @@ class DialogEngine:
         self.prompt_builder = GlinerPromptBuilder()
         self.actions = ActionRegistry()
         self.validators = ValidatorRegistry()
+        self.conditions = ConditionRegistry()
+        self.responses = ResponseRegistry()
         self.states = self.config["states"]
 
     def start_session(self, session_id: str) -> DialogContext:
@@ -98,19 +136,22 @@ class DialogEngine:
         slot_config = current_state_config.get("slot_config", {})
         for k, v in entities.items():
             # Validation
-            config_item = slot_config.get(k, {})
-            validator_name = config_item.get("validator")
-            if validator_name and not self.validators.validate(validator_name, v):
-                logger.warning(f"Slot {k}={v} failed validation {validator_name}")
-                continue
+            if v:
+                config_item = slot_config.get(k, {})
+                validator_name = config_item.get("validator")
+                if validator_name and not self.validators.validate(validator_name, v):
+                    logger.warning(f"Slot {k}={v} failed validation {validator_name}")
+                    continue
+                # Enrichment
+                config_item = slot_config.get(k, {})
+                enricher_name = config_item.get("enricher")
+                if enricher_name:
+                    enricher_response = self.validators.enrich(
+                        enricher_name, v[0]["text"]
+                    )
+                    v[0]["value"] = enricher_response
 
-            # Enrichment
-            enricher_name = config_item.get("enricher")
-            if enricher_name:
-                enricher_response = self.validators.enrich(enricher_name, v[0]["text"])
-                v[0]["value"] = enricher_response
-
-            context.update_slot(k, v)
+                context.update_slot(k, v)
 
         # 4. Handle State Transitions
         next_state = self._resolve_transition(current_state_config, intent, context)
@@ -156,13 +197,23 @@ class DialogEngine:
         transitions = state_config.get("transitions", [])
         for t in transitions:
             if t["intent"] == intent:
-                # Check conditions
+                # Custom Condition Function
                 if "condition" in t:
-                    if t["condition"] == "all_slots_filled":
-                        required = state_config.get("slots_required", [])
-                        # Only check REQUIRED slots
-                        if not all(k in context.slots for k in required):
-                            continue  # Condition failed
+                    condition_func = t["condition"]
+                    target_state = t["target"]
+                    # Expecting function to return the next valid state
+                    next_state = self.conditions.check(
+                        condition_func, context, target_state
+                    )
+                    if next_state:
+                        # Context Updates (Clearing Slots) - Apply here if transition happens?
+                        if "context_updates" in t:
+                            to_clear = t["context_updates"].get("clear_slots", [])
+                            for slot_name in to_clear:
+                                if slot_name in context.slots:
+                                    del context.slots[slot_name]
+                        return next_state
+                    continue
 
                 # Context Updates (Clearing Slots)
                 if "context_updates" in t:
@@ -203,6 +254,13 @@ class DialogEngine:
         return self._generate_response(self.states[next_state], context)
 
     def _generate_response(self, state_config: Dict, context: DialogContext) -> str:
+        # Custom Response Function
+        if "response_function" in state_config:
+            resp_func = state_config["response_function"]
+            response = self.responses.generate(resp_func, context)
+            if response:
+                return response
+
         # Static Template
         if "response_template" in state_config:
             template = state_config["response_template"]
