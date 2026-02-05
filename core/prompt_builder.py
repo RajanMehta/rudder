@@ -68,11 +68,16 @@ class GlinerPromptBuilder:
 
         required_slots = state_config.get("slots_required", [])
         optional_slots = state_config.get("slots_optional", [])
+        slot_config = state_config.get("slot_config", {})
 
         entities = {}
         for slot in required_slots + optional_slots:
-            # In a real scenario, we might want to map slot names to descriptions
-            # For now, we use the slot name as the description
-            entities[slot] = f"Extract the {slot} from the text"
+            # Check for custom description in slot_config
+            slot_cfg = slot_config.get(slot, {})
+            if "description" in slot_cfg:
+                entities[slot] = slot_cfg["description"]
+            else:
+                # Default description
+                entities[slot] = f"Extract the {slot} from the text"
 
         return {"entities": entities, "classification": ("intent", intent_labels)}

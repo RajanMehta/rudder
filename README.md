@@ -48,9 +48,10 @@ The entire conversational logic is defined in a JSON file. This schema allows fo
       "description": "Collect the destination city.",
       "slots_required": ["destination"],
       "slot_config": {
-        "destination": { 
-          "validator": "is_valid_city", 
-          "enricher": "to_airport_code" 
+        "destination": {
+          "description": "city or airport name",
+          "validator": "is_valid_city",
+          "enricher": "to_airport_code"
         }
       },
       "transitions": [
@@ -78,11 +79,11 @@ The entire conversational logic is defined in a JSON file. This schema allows fo
     },
     "booking_confirmed": {
       "response_template": "Your flight to {{destination}} is confirmed!",
-      "terminal": true
+      "type": "terminal"
     },
     "system_failure": {
       "response_template": "I'm sorry, I was unable to process your request. Please try again.",
-      "terminal": true
+      "type": "terminal"
     }
   }
 }
@@ -104,11 +105,9 @@ Each key in the `states` object represents a unique state ID.
 | `type` | `enum` | `standard` (default) or `action` or `terminal`. Action states execute code immediately upon entry. Terminal states do not have any transitions. |
 | `slots_required` | `string[]` | List of slot names that *must* be filled to satisfy certain transition conditions. |
 | `slots_optional` | `string[]` | List of slot names that the engine should try to extract if present. |
-| `slot_config` | `object` | Map of slot names to their logic: `validator` (Python function name) and `enricher` (Python function name). |
+| `slot_config` | `object` | Map of slot names to their config: `description` (entity description for NLU), `validator` (Python function name), `enricher` (Python function name). |
 | `transitions` | `list \| object` | **Standard State:** A list of intent-based transition objects (see below).<br>**Action State:** A map of action result strings (e.g., "success", "error") to target state IDs. |
 | `action_name` | `string` | The name of the Python function to execute (only for `type: action`). |
-| `on_success` | `string` | Legacy fallback for action states if `transitions` map doesn't match a "success" result. |
-| `on_error` | `string` | Legacy fallback for action states if `transitions` map doesn't match an "error" result. |
 | `response_template` | `string` | A static text string to return to the user. |
 | `response_prompt` | `string` | A prompt for the LLM to generate a dynamic, natural language response. |
 | `response_function` | `string` | Name of a registered Python function to dynamically generate key-value response strings. |
@@ -125,6 +124,7 @@ Each key in the `states` object represents a unique state ID.
 ## Features
 *   **Stateless LLM Logic**: The LLM never sees the whole graph, only the immediate valid options.
 *   **Dynamic Validations**: Plug in Python functions to validate data before it enters the context.
+*   **Duckling Integration**: Deterministic slot enrichment for dates, amounts, and other structured data via [Duckling](https://github.com/facebook/duckling).
 *   **Custom Logic**: Register Python functions for complex state transitions (`conditions`) and dynamic responses (`response_functions`).
 *   **Graceful Fallbacks**: Configurable behavior for "Unknown" intents or "Action Errors".
 
@@ -161,16 +161,28 @@ python main.py
 7. Run `make help` to find other available commands
 
 ## Usage / Tutorial
-See the `examples/` directory for detailed patterns in increasing order of complexity:
-1.  **Simple FAQ**: Intent-based navigation.
-2.  **Slot Filling**: Collecting required data with validation.
-3.  **Complex Flow**: Shared slots and multi-step processes.
-4.  **Error Handling**: Robust recovery from system failures.
-5.  **Banking Flow**: Full working example of a banking flow. (run `python main.py`)
+
+### Examples
+See the `examples/` directory for card management patterns in increasing complexity:
+1.  **Simple FAQ** (`1_faq_simple`): Intent-based navigation with static responses.
+2.  **Slot Filling** (`2_faq_slots`): Entity extraction with conditions like `all_slots_filled`.
+3.  **Complex Flow** (`3_complex_slots`): User corrections and dynamic slot updates.
+4.  **Error Handling** (`4_error_handling`): Validators, fallbacks, and human agent handoff.
+
+### Demo Scripts
+Run the personal finance assistant demos:
+```bash
+make demo-balance       # Balance inquiry demo
+make demo-transactions  # Transaction query demo
+make demo-transfer      # Transfer flow demo
+make demo-full          # Full conversation demo
+make demo-interactive   # Interactive chat session
+```
+
+The main banking flow is in `config/banking_flow.json` and runs with `make run`.
 
 ## Future Improvements
 1.  **Generative Models for NLU**: Identify other LLMs for NLU and add corresponding clients.
-2.  **Duckling for Slots**: Use [Duckling](https://github.com/facebook/duckling) for deterministic slot enrichment (for processing dates, amounts, etc.). Adds only ~10ms to inference time.
-3.  **Multi Intent**: Support for multiple intents in a single state. (e.g. setting `"multi_label": True` for Gliner and handling multiple intent from a single state.)
-4.  **Intent Disambiguation**: Support for disambiguating between multiple intents based on confidence-score based heuristics.
-5.  **Response Generation**: Support for generating responses using LLMs. (currently we are using static templates.)
+2.  **Multi Intent**: Support for multiple intents in a single state (e.g. setting `"multi_label": True` for GLiNER).
+3.  **Intent Disambiguation**: Support for disambiguating between multiple intents based on confidence-score heuristics.
+4.  **Response Generation**: Support for generating responses using LLMs (currently using static templates and response functions).

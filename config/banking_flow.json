@@ -4,72 +4,400 @@
     },
     "states": {
         "root": {
-            "description": "The main menu. The user can ask for banking services.",
-            "response_template": "Welcome! How can I help you today?",
+            "description": "Main menu for personal finance assistant. User can check balances, query transactions, make transfers, check credit card info, or greet/farewell.",
+            "response_template": "Hello! I'm your personal finance assistant. How can I help you today?",
             "fallback_behavior": "oos",
             "transitions": [
                 {
+                    "intent": "greeting",
+                    "target": "greeting_response"
+                },
+                {
+                    "intent": "farewell",
+                    "target": "farewell_response"
+                },
+                {
                     "intent": "check_balance",
-                    "target": "view_balance"
+                    "target": "balance_inquiry"
+                },
+                {
+                    "intent": "query_transactions",
+                    "target": "txn_query_active"
                 },
                 {
                     "intent": "transfer_money",
-                    "target": "transfer_flow_start"
+                    "target": "transfer_collect"
+                },
+                {
+                    "intent": "credit_card_info",
+                    "target": "credit_card_inquiry"
                 }
             ]
         },
-        "view_balance": {
-            "description": "Displaying the user's balance.",
-            "type": "action",
-            "action_name": "get_balance",
-            "transitions": {
-                "success": "balance_displayed",
-                "error": "system_error"
-            }
-        },
-        "balance_displayed": {
-            "response_template": "Your balance is ${{balance}}",
+
+        "greeting_response": {
+            "description": "Respond to user greeting",
+            "response_template": "Hello! I'm your personal finance assistant. I can help you check balances, review transactions, make transfers, or view credit card information. What would you like to do?",
             "type": "terminal"
         },
-        "transfer_flow_start": {
-            "description": "Initiating a money transfer. We need to know who to send it to and how much.",
-            "slots_required": [
-                "amount",
-                "recipient"
-            ],
+
+        "farewell_response": {
+            "description": "Respond to user goodbye",
+            "response_template": "Goodbye! Let me know if there's anything else you need. Have a great day!",
+            "type": "terminal"
+        },
+
+        "balance_inquiry": {
+            "description": "Extract account name for balance inquiry.",
+            "slots_optional": ["account"],
+            "slot_config": {
+                "account": {
+                    "description": "bank account or financial account name",
+                    "enricher": "normalize_account_name"
+                }
+            },
+            "response_function": "process_balance_query",
+            "fallback_behavior": "ask_reclassify",
+            "transitions": [
+                {
+                    "intent": "check_balance",
+                    "target": "balance_inquiry"
+                },
+                {
+                    "intent": "query_transactions",
+                    "target": "txn_query_active"
+                },
+                {
+                    "intent": "credit_card_info",
+                    "target": "credit_card_inquiry"
+                },
+                {
+                    "intent": "transfer_money",
+                    "target": "transfer_collect"
+                },
+                {
+                    "intent": "farewell",
+                    "target": "farewell_response"
+                },
+                {
+                    "intent": "cancel",
+                    "target": "root"
+                }
+            ]
+        },
+
+        "balance_displayed": {
+            "description": "Display balance result",
+            "response_function": "display_balance",
+            "type": "terminal"
+        },
+
+        "balance_not_found": {
+            "description": "Account not found",
+            "response_template": "I couldn't find an account matching '{{account}}'. Please try again with a different account name.",
+            "slots_optional": ["account"],
+            "slot_config": {
+                "account": {
+                    "description": "bank account or financial account name",
+                    "enricher": "normalize_account_name"
+                }
+            },
+            "transitions": [
+                {
+                    "intent": "check_balance",
+                    "target": "balance_inquiry"
+                },
+                {
+                    "intent": "cancel",
+                    "target": "root"
+                }
+            ]
+        },
+
+        "txn_query_active": {
+            "description": "User wants to query transactions. Can filter by merchant, category, amount, date range, location.",
             "slots_optional": [
-                "memo"
+                "merchant",
+                "category",
+                "amount_filter",
+                "amount_threshold",
+                "date_range",
+                "location",
+                "account"
             ],
             "slot_config": {
-                "amount": {
+                "merchant": {
+                    "description": "store or company name like Amazon, Walmart, Starbucks"
+                },
+                "category": {
+                    "description": "spending category like groceries, dining, shopping, entertainment"
+                },
+                "amount_filter": {
+                    "description": "amount comparison operator like over, under, more than, less than"
+                },
+                "amount_threshold": {
+                    "description": "dollar amount or money value",
+                    "enricher": "enrich_amount_of_money"
+                },
+                "date_range": {
+                    "description": "time period like last month, past year, 18 months",
+                    "enricher": "enrich_time"
+                },
+                "location": {
+                    "description": "city or place name"
+                },
+                "account": {
+                    "description": "bank account or financial account name",
+                    "enricher": "normalize_account_name"
+                }
+            },
+            "response_function": "process_txn_query",
+            "fallback_behavior": "ask_reclassify",
+            "transitions": [
+                {
+                    "intent": "show_transactions",
+                    "target": "txn_list_displayed"
+                },
+                {
+                    "intent": "query_transactions",
+                    "target": "txn_query_active"
+                },
+                {
+                    "intent": "check_balance",
+                    "target": "balance_inquiry"
+                },
+                {
+                    "intent": "credit_card_info",
+                    "target": "credit_card_inquiry"
+                },
+                {
+                    "intent": "transfer_money",
+                    "target": "transfer_collect"
+                },
+                {
+                    "intent": "farewell",
+                    "target": "farewell_response"
+                },
+                {
+                    "intent": "cancel",
+                    "target": "root",
+                    "context_updates": {
+                        "clear_slots": ["merchant", "category", "amount_filter", "amount_threshold", "date_range", "location", "txn_results", "txn_summary"]
+                    }
+                }
+            ]
+        },
+
+        "txn_displayed": {
+            "description": "Shows transaction summary. User can ask to see details, add filters, or move on.",
+            "slots_optional": [
+                "merchant",
+                "category",
+                "amount_filter",
+                "amount_threshold",
+                "date_range",
+                "location",
+                "account"
+            ],
+            "slot_config": {
+                "merchant": {
+                    "description": "store or company name like Amazon, Walmart, Starbucks"
+                },
+                "category": {
+                    "description": "spending category like groceries, dining, shopping, entertainment"
+                },
+                "amount_filter": {
+                    "description": "amount comparison operator like over, under, more than, less than"
+                },
+                "amount_threshold": {
+                    "description": "dollar amount or money value",
+                    "enricher": "enrich_amount_of_money"
+                },
+                "date_range": {
+                    "description": "time period like last month, past year, 18 months",
+                    "enricher": "enrich_time"
+                },
+                "location": {
+                    "description": "city or place name"
+                },
+                "account": {
+                    "description": "bank account or financial account name",
+                    "enricher": "normalize_account_name"
+                }
+            },
+            "response_function": "display_txn_summary",
+            "fallback_behavior": "ask_reclassify",
+            "transitions": [
+                {
+                    "intent": "show_transactions",
+                    "target": "txn_list_displayed"
+                },
+                {
+                    "intent": "query_transactions",
+                    "target": "txn_query_active"
+                },
+                {
+                    "intent": "check_balance",
+                    "target": "balance_inquiry"
+                },
+                {
+                    "intent": "credit_card_info",
+                    "target": "credit_card_inquiry"
+                },
+                {
+                    "intent": "transfer_money",
+                    "target": "transfer_collect"
+                },
+                {
+                    "intent": "cancel",
+                    "target": "root",
+                    "context_updates": {
+                        "clear_slots": ["merchant", "category", "amount_filter", "amount_threshold", "date_range", "location", "txn_results", "txn_summary"]
+                    }
+                }
+            ]
+        },
+
+        "txn_list_displayed": {
+            "description": "Shows detailed transaction list.",
+            "slots_optional": [
+                "merchant",
+                "category",
+                "amount_filter",
+                "amount_threshold",
+                "date_range",
+                "location",
+                "account"
+            ],
+            "slot_config": {
+                "merchant": {
+                    "description": "store or company name like Amazon, Walmart, Starbucks"
+                },
+                "category": {
+                    "description": "spending category like groceries, dining, shopping, entertainment"
+                },
+                "amount_filter": {
+                    "description": "amount comparison operator like over, under, more than, less than"
+                },
+                "amount_threshold": {
+                    "description": "dollar amount or money value",
+                    "enricher": "enrich_amount_of_money"
+                },
+                "date_range": {
+                    "description": "time period like last month, past year, 18 months",
+                    "enricher": "enrich_time"
+                },
+                "location": {
+                    "description": "city or place name"
+                },
+                "account": {
+                    "description": "bank account or financial account name",
+                    "enricher": "normalize_account_name"
+                }
+            },
+            "response_function": "display_txn_list",
+            "fallback_behavior": "ask_reclassify",
+            "transitions": [
+                {
+                    "intent": "query_transactions",
+                    "target": "txn_query_active"
+                },
+                {
+                    "intent": "check_balance",
+                    "target": "balance_inquiry"
+                },
+                {
+                    "intent": "credit_card_info",
+                    "target": "credit_card_inquiry"
+                },
+                {
+                    "intent": "transfer_money",
+                    "target": "transfer_collect"
+                },
+                {
+                    "intent": "farewell",
+                    "target": "farewell_response"
+                },
+                {
+                    "intent": "cancel",
+                    "target": "root",
+                    "context_updates": {
+                        "clear_slots": ["merchant", "category", "amount_filter", "amount_threshold", "date_range", "location", "txn_results", "txn_summary"]
+                    }
+                }
+            ]
+        },
+
+        "txn_none_found": {
+            "description": "No transactions found matching criteria.",
+            "response_template": "No transactions found matching your criteria. Would you like to try different filters?",
+            "transitions": [
+                {
+                    "intent": "affirmation",
+                    "target": "txn_query_active",
+                    "context_updates": {
+                        "clear_slots": ["merchant", "category", "amount_filter", "amount_threshold", "date_range", "location"]
+                    }
+                },
+                {
+                    "intent": "negation",
+                    "target": "root",
+                    "context_updates": {
+                        "clear_slots": ["merchant", "category", "amount_filter", "amount_threshold", "date_range", "location", "txn_results", "txn_summary"]
+                    }
+                }
+            ]
+        },
+
+        "transfer_collect": {
+            "description": "Collecting transfer details. Need amount, destination, optionally source and date.",
+            "slots_required": ["transfer_amount", "destination_account"],
+            "slots_optional": ["source_account", "transfer_date"],
+            "slot_config": {
+                "transfer_amount": {
+                    "description": "dollar amount or money value to transfer",
                     "validator": "validate_positive",
                     "enricher": "enrich_amount_of_money"
+                },
+                "transfer_date": {
+                    "description": "date or time for the transfer like tomorrow, next week",
+                    "enricher": "enrich_time"
+                },
+                "source_account": {
+                    "description": "bank account to transfer from (source)",
+                    "enricher": "normalize_account_name"
+                },
+                "destination_account": {
+                    "description": "bank account or credit card to transfer to (destination)",
+                    "enricher": "normalize_account_name"
                 }
             },
             "response_function": "ask_transfer_info",
             "fallback_behavior": "ask_reclassify",
             "transitions": [
                 {
-                    "intent": "transfer_information",
+                    "intent": "transfer_money",
                     "target": "transfer_confirm",
-                    "condition": "check_transfer_slots"
+                    "condition": "check_transfer_ready"
+                },
+                {
+                    "intent": "affirmation",
+                    "target": "transfer_execute",
+                    "condition": "check_transfer_ready"
                 },
                 {
                     "intent": "cancel",
                     "target": "root",
                     "context_updates": {
-                        "clear_slots": [
-                            "amount",
-                            "recipient",
-                            "memo"
-                        ]
+                        "clear_slots": ["transfer_amount", "destination_account", "source_account", "transfer_date"]
                     }
                 }
             ]
         },
+
         "transfer_confirm": {
-            "description": "Waiting for user confirmation to execute transfer.",
-            "response_template": "Confirm the transfer of {{amount}} to {{recipient}}.",
+            "description": "Confirm transfer details before execution.",
+            "response_function": "confirm_transfer_details",
             "fallback_behavior": "ask_reclassify",
             "transitions": [
                 {
@@ -78,48 +406,137 @@
                 },
                 {
                     "intent": "negation",
-                    "target": "root"
+                    "target": "root",
+                    "context_updates": {
+                        "clear_slots": ["transfer_amount", "destination_account", "source_account", "transfer_date"]
+                    }
+                },
+                {
+                    "intent": "transfer_money",
+                    "target": "transfer_collect"
+                },
+                {
+                    "intent": "farewell",
+                    "target": "farewell_response",
+                    "context_updates": {
+                        "clear_slots": ["transfer_amount", "destination_account", "source_account", "transfer_date"]
+                    }
                 }
             ]
         },
+
         "transfer_execute": {
+            "description": "Execute the transfer.",
             "type": "action",
-            "action_name": "execute_transfer_func",
+            "action_name": "execute_transfer",
             "transitions": {
                 "success": "transfer_success",
-                "insufficient_funds": "transfer_error_insufficient_funds",
-                "error": "transfer_error_state"
+                "insufficient_funds": "transfer_error",
+                "invalid_account": "transfer_error",
+                "error": "system_error"
             }
         },
-        "transfer_error_insufficient_funds": {
-            "response_template": "I'm sorry, you don't have enough funds for this transfer.",
-            "transitions": [
-                {
-                    "intent": "affirmation",
-                    "target": "root"
-                }
-            ]
-        },
+
         "transfer_success": {
             "description": "Transfer completed successfully.",
-            "response_template": "Success! The money has been sent.",
+            "response_function": "display_transfer_result",
             "type": "terminal"
         },
-        "transfer_error_state": {
-            "response_template": "I'm sorry, something went wrong with the transfer. Please try again later.",
+
+        "transfer_error": {
+            "description": "Transfer failed due to insufficient funds or invalid account.",
+            "response_function": "display_transfer_result",
             "transitions": [
                 {
-                    "intent": "affirmation",
+                    "intent": "transfer_money",
+                    "target": "transfer_collect"
+                },
+                {
+                    "intent": "cancel",
+                    "target": "root",
+                    "context_updates": {
+                        "clear_slots": ["transfer_amount", "destination_account", "source_account", "transfer_date", "transfer_error"]
+                    }
+                }
+            ]
+        },
+
+        "credit_card_inquiry": {
+            "description": "Extract card name for credit card inquiry.",
+            "slots_optional": ["card_name"],
+            "slot_config": {
+                "card_name": {
+                    "description": "credit card or card account name",
+                    "enricher": "normalize_card_name"
+                }
+            },
+            "response_function": "process_credit_card_query",
+            "fallback_behavior": "ask_reclassify",
+            "transitions": [
+                {
+                    "intent": "credit_card_info",
+                    "target": "credit_card_inquiry"
+                },
+                {
+                    "intent": "check_balance",
+                    "target": "balance_inquiry"
+                },
+                {
+                    "intent": "query_transactions",
+                    "target": "txn_query_active"
+                },
+                {
+                    "intent": "transfer_money",
+                    "target": "transfer_collect"
+                },
+                {
+                    "intent": "farewell",
+                    "target": "farewell_response"
+                },
+                {
+                    "intent": "cancel",
                     "target": "root"
                 }
             ]
         },
-        "system_error": {
-            "response_template": "I encountered a system error. Returning to the main menu.",
+
+        "credit_card_displayed": {
+            "description": "Display credit card information.",
+            "response_function": "display_credit_card",
             "type": "terminal"
         },
+
+        "credit_card_not_found": {
+            "description": "Credit card not found.",
+            "response_template": "I couldn't find a credit card matching '{{card_name}}'. Please try again.",
+            "slots_optional": ["card_name"],
+            "slot_config": {
+                "card_name": {
+                    "description": "credit card or card account name",
+                    "enricher": "normalize_card_name"
+                }
+            },
+            "transitions": [
+                {
+                    "intent": "credit_card_info",
+                    "target": "credit_card_inquiry"
+                },
+                {
+                    "intent": "cancel",
+                    "target": "root"
+                }
+            ]
+        },
+
+        "system_error": {
+            "description": "System error occurred.",
+            "response_template": "I encountered a system error. Let me take you back to the main menu.",
+            "type": "terminal"
+        },
+
         "out_of_scope": {
-            "response_template": "I'm sorry, I didn't understand that. Could you please rephrase?",
+            "description": "User request not understood.",
+            "response_template": "I'm not sure I can help with that. I can check balances, query transactions, make transfers, or show credit card information. What would you like to do?",
             "type": "terminal"
         }
     }
