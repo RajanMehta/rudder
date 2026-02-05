@@ -132,24 +132,30 @@ class DialogEngine:
         intent = nlu_result.get("intent")
         entities = nlu_result.get("entities", {})
 
-        # 3. Validate & Enrich Slots
+        # 3. Enrich & Validate Slots (enrich first so validators see normalized values)
         slot_config = current_state_config.get("slot_config", {})
         for k, v in entities.items():
-            # Validation
             if v:
                 config_item = slot_config.get(k, {})
-                validator_name = config_item.get("validator")
-                if validator_name and not self.validators.validate(validator_name, v):
-                    logger.warning(f"Slot {k}={v} failed validation {validator_name}")
-                    continue
-                # Enrichment
-                config_item = slot_config.get(k, {})
+
+                # Enrichment first
                 enricher_name = config_item.get("enricher")
                 if enricher_name:
                     enricher_response = self.validators.enrich(
                         enricher_name, v[0]["text"]
                     )
                     v[0]["value"] = enricher_response
+
+                # Validation (on enriched value)
+                validator_name = config_item.get("validator")
+                if validator_name:
+                    # Use enriched value if available, otherwise raw text
+                    val_to_check = v[0].get("value", v[0].get("text"))
+                    if not self.validators.validate(validator_name, val_to_check):
+                        logger.warning(
+                            f"Slot {k}={val_to_check} failed validation {validator_name}"
+                        )
+                        continue
 
                 context.update_slot(k, v)
 
@@ -163,6 +169,58 @@ class DialogEngine:
 
             # Check if the new state is an action state and run it immediately
             new_state_config = self.states[next_state]
+
+            # Re-run NLU when transitioning to a state with different slots
+            # This fixes entity extraction when switching between capabilities
+            # Skip for action states as they don't use NLU classification
+            is_action_state = new_state_config.get("type") == "action"
+            new_slots = set(
+                new_state_config.get("slots_required", [])
+                + new_state_config.get("slots_optional", [])
+            )
+            current_slots = set(
+                current_state_config.get("slots_required", [])
+                + current_state_config.get("slots_optional", [])
+            )
+
+            # Re-run NLU if new state has slots that weren't in the current state
+            needs_re_nlu = new_slots and (new_slots != current_slots)
+
+            if needs_re_nlu and not is_action_state:
+                logger.info(
+                    f"Re-running NLU for state {next_state} to capture entities"
+                )
+                re_nlu_result = self._run_nlu(user_input, new_state_config, context)
+                re_entities = re_nlu_result.get("entities", {})
+
+                # Enrich & Validate the newly extracted slots
+                new_slot_config = new_state_config.get("slot_config", {})
+                for k, v in re_entities.items():
+                    if v:
+                        config_item = new_slot_config.get(k, {})
+
+                        # Enrichment first
+                        enricher_name = config_item.get("enricher")
+                        if enricher_name:
+                            enricher_response = self.validators.enrich(
+                                enricher_name, v[0]["text"]
+                            )
+                            v[0]["value"] = enricher_response
+
+                        # Validation (on enriched value)
+                        validator_name = config_item.get("validator")
+                        if validator_name:
+                            val_to_check = v[0].get("value", v[0].get("text"))
+                            if not self.validators.validate(
+                                validator_name, val_to_check
+                            ):
+                                logger.warning(
+                                    f"Slot {k}={val_to_check} failed validation {validator_name}"
+                                )
+                                continue
+
+                        context.update_slot(k, v)
+
             if new_state_config.get("type") == "action":
                 bot_response = self._handle_action_state(context, new_state_config)
             else:
